@@ -16,22 +16,28 @@ shows the control plane that makes it unnecessary.
 
 ---
 
-## The two problems (and why they're separate)
+## The flow, step by step
+
+The whole lifecycle, in the order the diagram shows it:
+
+| # | Step | What happens |
+|---|------|--------------|
+| 1 | **Provisioning** | A device registers itself on first boot and gets its own identity |
+| 2 | **Greengrass core** | Runs local workloads on each device and manages the fleet |
+| 3 | **Developer push** | A commit kicks off the pipeline with a new version |
+| 4 | **CI/CD pipeline** | Builds, packages, and publishes the component to Greengrass |
+| 5 | **S3 artifacts** | Stores the immutable build artifact |
+| 6 | **Edge devices** | Receive the new version over MQTT and install it |
+| 7 | **Observability** | Devices report metrics and logs back, closing the loop |
 
 The thing that clicks once you build this: **provisioning and deployment are two
-different problems.** One is about *identity*, the other about *software*. Keep
-them decoupled and the whole thing scales.
-
-| | Provisioning | Deployment |
-|---|---|---|
-| Goal | register a device | update software |
-| Happens | once per device, on first boot | continuously |
-| Trigger | device boots with a claim cert | a developer pushes code |
-| Result | a Thing + a permanent certificate | new component running on the fleet |
+different problems.** One is about *identity* (steps 1–2), the other about
+*software* (steps 3–6). Keep them decoupled and the whole thing scales. And the
+**CI/CD pipeline is what updates Greengrass** — not a person.
 
 ---
 
-## 1. Provisioning — zero-touch
+## 1–2. Provisioning — zero-touch
 
 Every device is flashed with the **same image**, carrying only a shared *claim
 certificate*: a disposable entry ticket that can do nothing but ask for a real
@@ -39,7 +45,8 @@ identity. On first boot the device sends its serial, and a **pre-provisioning
 hook** ([`handler.py`](provisioning/pre-provisioning-hook/handler.py)) decides
 whether it's allowed in. If it checks out, AWS creates the Thing, issues a
 **permanent certificate**, and drops it into a thing group. The claim cert is
-then deleted.
+then deleted. The device now runs the **Greengrass core**, which executes local
+workloads and stays managed from the cloud.
 
 One image → many devices, each with its own identity, no manual steps.
 
@@ -57,12 +64,13 @@ affects *that one* device, not the fleet.
 
 ---
 
-## 2. Deployment — continuous
+## 3–6. Deployment — the pipeline updates the fleet
 
-A push kicks off CI/CD: build, package, upload an **immutable** artifact version
-to S3, then register the component version and create a deployment targeting a
-**thing group**. Greengrass pushes it over MQTT and every device in the group
-installs it — in minutes, no reboot.
+A **developer push** kicks off **CI/CD**: build, package, upload an **immutable**
+artifact version to **S3**, then register the component version and create a
+deployment targeting a **thing group**. Greengrass pushes it over MQTT and every
+**edge device** in the group installs it — in minutes, no reboot. The pipeline is
+what talks to Greengrass; you don't touch the devices.
 
 ```bash
 export BUCKET=your-bucket ACCOUNT_ID=123456789012 THING_GROUP=fleet-a
@@ -79,12 +87,12 @@ export BUCKET=your-bucket ACCOUNT_ID=123456789012 THING_GROUP=fleet-a
 
 ---
 
-## 3. Observability — closing the loop
+## 7. Observability — closing the loop
 
 Deploying blind isn't enough. Devices report metrics and logs back to CloudWatch,
 alarms fire on the ones that matter, and notifications / tickets get raised. So
 it's not "deploy and hope" — you actually see the fleet's health come back. That
-return path is the orange arrow in the diagram above.
+return path is the orange cable in the diagram above.
 
 ---
 
