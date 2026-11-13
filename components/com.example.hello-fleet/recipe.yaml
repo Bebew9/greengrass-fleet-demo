@@ -1,0 +1,23 @@
+---
+# Greengrass v2 component recipe.
+#
+# A component = code + this recipe. It's immutable: once version 1.0.0 exists in
+# AWS you can't change it, you publish 1.0.1. The recipe tells each device how to
+# install and run the component, and where to pull artifacts from.
+RecipeFormatVersion: "2020-01-25"
+ComponentName: com.example.hello-fleet
+ComponentVersion: "1.0.0"
+ComponentDescription: Minimal long-running component to demo fleet deployment.
+ComponentPublisher: example
+
+Manifests:
+  - Platform:
+      os: linux
+    Lifecycle:
+      # Run is the long-running entrypoint. {artifacts:path} is resolved on the
+      # device to where Greengrass unpacked this version's artifacts.
+      Run: "python3 -u {artifacts:path}/hello_fleet.py"
+    Artifacts:
+      # Replace BUCKET with your own S3 bucket. In a real pipeline the CI step
+      # uploads the artifact here and rewrites this URI to the new version.
+      - URI: "s3://BUCKET/components/com.example.hello-fleet/1.0.0/hello_fleet.py"

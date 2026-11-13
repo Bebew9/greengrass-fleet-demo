@@ -1,0 +1,32 @@
+{
+  "Parameters": {
+    "SerialNumber": { "Type": "String" },
+    "FleetGroup": { "Type": "String" },
+    "AWS::IoT::Certificate::Id": { "Type": "String" }
+  },
+  "Resources": {
+    "thing": {
+      "Type": "AWS::IoT::Thing",
+      "Properties": {
+        "ThingName": { "Ref": "SerialNumber" },
+        "ThingGroups": [{ "Ref": "FleetGroup" }],
+        "AttributePayload": {
+          "SerialNumber": { "Ref": "SerialNumber" }
+        }
+      }
+    },
+    "certificate": {
+      "Type": "AWS::IoT::Certificate",
+      "Properties": {
+        "CertificateId": { "Ref": "AWS::IoT::Certificate::Id" },
+        "Status": "ACTIVE"
+      }
+    },
+    "policy": {
+      "Type": "AWS::IoT::Policy",
+      "Properties": {
+        "PolicyName": "device-greengrass-policy"
+      }
+    }
+  }
+}
